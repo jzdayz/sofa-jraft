@@ -14,22 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alipay.sofa.jraft.example.counter;
+package com.alipay.sofa.jraft.simpleKv.rpc;
 
 import com.alipay.remoting.rpc.RpcServer;
 import com.alipay.sofa.jraft.Node;
 import com.alipay.sofa.jraft.RaftGroupService;
 import com.alipay.sofa.jraft.conf.Configuration;
 import com.alipay.sofa.jraft.entity.PeerId;
-import com.alipay.sofa.jraft.example.counter.rpc.GetValueRequestProcessor;
-import com.alipay.sofa.jraft.example.counter.rpc.IncrementAndGetRequestProcessor;
-import com.alipay.sofa.jraft.example.counter.rpc.ValueResponse;
 import com.alipay.sofa.jraft.option.NodeOptions;
 import com.alipay.sofa.jraft.rpc.RaftRpcServerFactory;
+import lombok.Data;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.Executors;
 
 /**
  * Counter server that keeps a counter value in a raft group.
@@ -38,14 +37,15 @@ import java.io.IOException;
  *
  * 2018-Apr-09 4:51:02 PM
  */
-public class CounterServer {
+@Data
+public class KvServer {
 
-    private RaftGroupService    raftGroupService;
-    private Node                node;
-    private CounterStateMachine fsm;
+    private RaftGroupService raftGroupService;
+    private Node             node;
+    private KvStateMachine   fsm;
 
-    public CounterServer(final String dataPath, final String groupId, final PeerId serverId,
-                         final NodeOptions nodeOptions) throws IOException {
+    public KvServer(final String dataPath, final String groupId, final PeerId serverId, final NodeOptions nodeOptions)
+                                                                                                                      throws IOException {
         // 初始化路径
         FileUtils.forceMkdir(new File(dataPath));
 
@@ -53,11 +53,11 @@ public class CounterServer {
         final RpcServer rpcServer = new RpcServer(serverId.getPort());
         RaftRpcServerFactory.addRaftRequestProcessors(rpcServer);
         // 注册业务处理器
-        CounterService counterService = new CounterServiceImpl(this);
-        rpcServer.registerUserProcessor(new GetValueRequestProcessor(counterService));
-        rpcServer.registerUserProcessor(new IncrementAndGetRequestProcessor(counterService));
+        KvServiceImpl service = new KvServiceImpl();
+
+        rpcServer.registerUserProcessor(new RequestProcessor(service));
         // 初始化状态机
-        this.fsm = new CounterStateMachine();
+        this.fsm = new KvStateMachine();
         // 设置状态机到启动参数
         nodeOptions.setFsm(this.fsm);
         // 设置存储路径
@@ -71,33 +71,10 @@ public class CounterServer {
         this.raftGroupService = new RaftGroupService(groupId, serverId, nodeOptions, rpcServer);
         // 启动
         this.node = this.raftGroupService.start();
-    }
 
-    public CounterStateMachine getFsm() {
-        return this.fsm;
-    }
-
-    public Node getNode() {
-        return this.node;
-    }
-
-    public RaftGroupService RaftGroupService() {
-        return this.raftGroupService;
-    }
-
-    /**
-     * Redirect request to new leader
-     */
-    public ValueResponse redirect() {
-        final ValueResponse response = new ValueResponse();
-        response.setSuccess(false);
-        if (this.node != null) {
-            final PeerId leader = this.node.getLeaderId();
-            if (leader != null) {
-                response.setRedirect(leader.toString());
-            }
-        }
-        return response;
+        service.setNode(node);
+        service.setExecutorService(Executors.newCachedThreadPool());
+        service.setKvStateMachine(fsm);
     }
 
     public static void main(String[] args) throws IOException {
@@ -107,7 +84,9 @@ public class CounterServer {
         //        args = new String[]{"/tmp/server2","test","127.0.0.1:8082",
         //                "127.0.0.1:8081,127.0.0.1:8082,127.0.0.1:8083"
         //        };
-        args = new String[] { "/tmp/server1", "test", "127.0.0.1:8081", "127.0.0.1:8081" };
+        args = new String[] { "/tmp/server1", "test", "127.0.0.1:8081",
+                //                "127.0.0.1:8081,127.0.0.1:8082,127.0.0.1:8083"
+                "127.0.0.1:8081" };
         if (args.length != 4) {
             System.out
                 .println("Useage : java com.alipay.sofa.jraft.example.counter.CounterServer {dataPath} {groupId} {serverId} {initConf}");
@@ -141,8 +120,7 @@ public class CounterServer {
         nodeOptions.setInitialConf(initConf);
 
         // 启动
-        final CounterServer counterServer = new CounterServer(dataPath, groupId, serverId, nodeOptions);
-        System.out.println("Started counter server at port:"
-                           + counterServer.getNode().getNodeId().getPeerId().getPort());
+        final KvServer kvServer = new KvServer(dataPath, groupId, serverId, nodeOptions);
+        System.out.println("Started counter server at port:" + kvServer.getNode().getNodeId().getPeerId().getPort());
     }
 }

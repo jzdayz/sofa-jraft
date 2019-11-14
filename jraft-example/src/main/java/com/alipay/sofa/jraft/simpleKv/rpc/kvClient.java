@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alipay.sofa.jraft.example.counter;
+package com.alipay.sofa.jraft.simpleKv.rpc;
 
 import com.alipay.remoting.InvokeCallback;
 import com.alipay.remoting.exception.RemotingException;
@@ -29,7 +29,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class CounterClient {
+public class kvClient {
 
     public static void main(String[] args) throws Exception {
         args = new String[]{"test","127.0.0.1:8081"};
@@ -72,18 +72,20 @@ public class CounterClient {
             }
         });
 
-        get(cliClientService,peerId,latch);
+        put(cliClientService,peerId,latch);
 
         latch.await();
         System.out.println(n + " ops, cost : " + (System.currentTimeMillis() - start) + " ms.");
         System.exit(0);
     }
 
-    private static void get(BoltCliClientService cliClientService, AtomicReference<PeerId> peerId, CountDownLatch latch)
+    private static void put(BoltCliClientService cliClientService, AtomicReference<PeerId> peerId, CountDownLatch latch)
                                                                                                                         throws Exception {
 
-        final IncrementAndGetRequest request = new IncrementAndGetRequest();
-        request.setDelta(1);
+        final Request request = new Request();
+        request.setOp(Request.Op.PUT);
+        request.setKey("a");
+        request.setValue("b");
 
         cliClientService.getRpcClient().invokeWithCallback(peerId.get().getEndpoint().toString(), request,
             new InvokeCallback() {
