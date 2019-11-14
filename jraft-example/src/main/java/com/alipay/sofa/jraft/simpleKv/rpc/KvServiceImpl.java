@@ -49,6 +49,7 @@ public class KvServiceImpl implements KvService {
         }
 
         try {
+            closure.setRequest(request);
             final Task task = new Task();
             task.setData(ByteBuffer
                 .wrap(SerializerManager.getSerializer(SerializerManager.Hessian2).serialize(request)));
@@ -57,13 +58,13 @@ public class KvServiceImpl implements KvService {
         } catch (CodecException e) {
             String errorMsg = "Fail to encode CounterOperation";
             log.error(errorMsg, e);
-            closure.setResponse(new Response(true,""));
+            closure.setResponse(new Response(true, ""));
             closure.run(new Status(RaftError.EINTERNAL, errorMsg));
         }
     }
 
     private void handlerNotLeaderError(final KvClosure closure) {
-        closure.setResponse(new Response(true,""));
+        closure.setResponse(new Response(true, ""));
         closure.run(new Status(RaftError.EPERM, "Not leader"));
     }
 

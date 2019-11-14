@@ -97,7 +97,7 @@ public class KvStateMachine extends StateMachineAdapter {
                 }
 
                 if (closure != null) {
-                    closure.setResponse(new Response(true,current));
+                    closure.setResponse(new Response(true, current));
                     closure.run(Status.OK());
                 }
             }

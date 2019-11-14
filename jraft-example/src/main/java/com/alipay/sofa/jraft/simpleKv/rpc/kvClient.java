@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class kvClient {
 
     public static void main(String[] args) throws Exception {
-        args = new String[]{"test","127.0.0.1:8081"};
+        args = new String[]{"test","127.0.0.1:8081,127.0.0.1:8082,127.0.0.1:8083"};
         if (args.length != 2) {
             System.out.println("Useage : java com.alipay.sofa.jraft.example.counter.CounterClient {groupId} {conf}");
             System.out
@@ -68,10 +68,12 @@ public class kvClient {
         AtomicReference<PeerId> peerId = new AtomicReference<>(leader);
         RouteTable.getInstance().getConfiguration("test").getPeers().forEach(e->{
             if(!leader.equals(e)){
+                if (e.getEndpoint().getPort() == 8081)
                 peerId.set(e);
             }
         });
 
+        System.out.println(" 链接节点: "+peerId.get().getEndpoint().toString());
         put(cliClientService,peerId,latch);
 
         latch.await();
@@ -83,9 +85,9 @@ public class kvClient {
                                                                                                                         throws Exception {
 
         final Request request = new Request();
-        request.setOp(Request.Op.PUT);
-        request.setKey("a");
-        request.setValue("b");
+        request.setOp(Request.Op.GET);
+        request.setKey("aa");
+        request.setValue("bb");
 
         cliClientService.getRpcClient().invokeWithCallback(peerId.get().getEndpoint().toString(), request,
             new InvokeCallback() {
@@ -105,7 +107,7 @@ public class kvClient {
                 public Executor getExecutor() {
                     return null;
                 }
-            }, 5000);
+            }, 100_0000);
 
     }
 
