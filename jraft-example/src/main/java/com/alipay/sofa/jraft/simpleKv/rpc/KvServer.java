@@ -112,6 +112,7 @@ public class KvServer {
             throw new IllegalArgumentException("Fail to parse serverId:" + serverIdStr);
         }
         final Configuration initConf = new Configuration();
+        // 解析并且添加设置的节点
         if (!initConf.parse(initConfStr)) {
             throw new IllegalArgumentException("Fail to parse initConf:" + initConfStr);
         }

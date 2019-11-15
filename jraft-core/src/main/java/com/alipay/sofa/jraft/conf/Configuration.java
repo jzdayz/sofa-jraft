@@ -16,21 +16,14 @@
  */
 package com.alipay.sofa.jraft.conf;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-
+import com.alipay.sofa.jraft.entity.PeerId;
+import com.alipay.sofa.jraft.util.Copiable;
+import com.alipay.sofa.jraft.util.Requires;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.alipay.sofa.jraft.entity.PeerId;
-import com.alipay.sofa.jraft.util.Copiable;
-import com.alipay.sofa.jraft.util.Requires;
+import java.util.*;
 
 /**
  * A configuration with a set of peers.
@@ -292,6 +285,7 @@ public class Configuration implements Iterable<PeerId>, Copiable<Configuration> 
             final PeerId peer = new PeerId();
             int index;
             boolean isLearner = false;
+            // 含有 /learner 表示这个配置是一个learner
             if ((index = peerStr.indexOf(LEARNER_POSTFIX)) > 0) {
                 // It's a learner
                 peerStr = peerStr.substring(0, index);
