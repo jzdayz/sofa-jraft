@@ -71,13 +71,8 @@ public class KvServer {
     }
 
     public static void main(String[] args) throws IOException {
-        //        args = new String[]{"/tmp/server3","test","127.0.0.1:8083",
-        //                "127.0.0.1:8081,127.0.0.1:8082,127.0.0.1:8083"
-        //        };
-        //        args = new String[]{"/tmp/server2","test","127.0.0.1:8082",
-        //                "127.0.0.1:8081,127.0.0.1:8082,127.0.0.1:8083"
-        //        };
-        args = new String[] { "D:\\tmp\\server1", "test", "127.0.0.1:8081",
+        int nodeNum = 3;
+        args = new String[] { "/tmp/server"+nodeNum, "test", "127.0.0.1:808"+nodeNum,
                                 "127.0.0.1:8081,127.0.0.1:8082,127.0.0.1:8083"};
         if (args.length != 4) {
             System.out

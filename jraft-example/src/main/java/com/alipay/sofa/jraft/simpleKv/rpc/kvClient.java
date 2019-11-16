@@ -66,12 +66,12 @@ public class kvClient {
 //        }
 
         AtomicReference<PeerId> peerId = new AtomicReference<>(leader);
-        RouteTable.getInstance().getConfiguration("test").getPeers().forEach(e->{
-            if(!leader.equals(e)){
-                if (e.getEndpoint().getPort() == 8081)
-                peerId.set(e);
-            }
-        });
+//        RouteTable.getInstance().getConfiguration("test").getPeers().forEach(e->{
+//            if(!leader.equals(e)){
+//                if (e.getEndpoint().getPort() == 8083)
+//                peerId.set(e);
+//            }
+//        });
 
         System.out.println(" 链接节点: "+peerId.get().getEndpoint().toString());
         put(cliClientService,peerId,latch);
@@ -85,7 +85,7 @@ public class kvClient {
                                                                                                                         throws Exception {
 
         final Request request = new Request();
-        request.setOp(Request.Op.GET);
+        request.setOp(Request.Op.PUT);
         request.setKey("aa");
         request.setValue("bb");
 
