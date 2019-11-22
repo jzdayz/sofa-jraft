@@ -107,7 +107,8 @@ public class CounterServer {
         //        args = new String[]{"/tmp/server2","test","127.0.0.1:8082",
         //                "127.0.0.1:8081,127.0.0.1:8082,127.0.0.1:8083"
         //        };
-        args = new String[] { "D:\\tmp", "test", "127.0.0.1:8081", "127.0.0.1:8081" };
+        args = new String[] { "/Users/jzdayz/Downloads/server1", "test", "127.0.0.1:8081",
+                "127.0.0.1:8081,127.0.0.1:8082,127.0.0.1:8083"};
         if (args.length != 4) {
             System.out
                 .println("Useage : java com.alipay.sofa.jraft.example.counter.CounterServer {dataPath} {groupId} {serverId} {initConf}");

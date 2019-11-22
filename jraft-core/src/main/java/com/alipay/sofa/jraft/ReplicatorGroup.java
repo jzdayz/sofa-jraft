@@ -16,8 +16,6 @@
  */
 package com.alipay.sofa.jraft;
 
-import java.util.List;
-
 import com.alipay.sofa.jraft.closure.CatchUpClosure;
 import com.alipay.sofa.jraft.conf.ConfigurationEntry;
 import com.alipay.sofa.jraft.core.ReplicatorType;
@@ -28,6 +26,8 @@ import com.alipay.sofa.jraft.rpc.RpcRequests.AppendEntriesResponse;
 import com.alipay.sofa.jraft.rpc.RpcResponseClosure;
 import com.alipay.sofa.jraft.util.Describer;
 import com.alipay.sofa.jraft.util.ThreadId;
+
+import java.util.List;
 
 /**
  * Replicators in a raft group.
@@ -88,6 +88,8 @@ public interface ReplicatorGroup extends Describer {
     /**
      * Check replicator state, if it's not started, start it;
      * if it is blocked, unblock it. It should be called by leader.
+     *
+     *  如果复制器未启动，那么启动复制器，如果被锁住了，那么解锁(应该由leader调用)
      *
      * @param peer     peer of replicator
      * @param lockNode if lock with node

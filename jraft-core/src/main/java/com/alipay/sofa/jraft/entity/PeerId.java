@@ -26,6 +26,8 @@ import java.io.Serializable;
 /**
  * Represent a participant in a replicating group.
  *
+ *  表示一个参与者
+ *
  * @author boyan (boyan@alibaba-inc.com)
  *
  * 2018-Mar-12 3:27:37 PM
@@ -54,6 +56,7 @@ public class PeerId implements Copiable<PeerId>, Serializable, Checksum {
     @Override
     public long checksum() {
         if (this.checksum == 0) {
+            // crc 64 校验码
             this.checksum = CrcUtil.crc64(AsciiStringUtil.unsafeEncode(toString()));
         }
         return this.checksum;

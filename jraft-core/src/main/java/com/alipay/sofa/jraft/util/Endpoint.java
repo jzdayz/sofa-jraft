@@ -22,6 +22,8 @@ import java.net.InetSocketAddress;
 /**
  * A IP address with port.
  *
+ *  表示一个服务地址
+ *
  * @author boyan (boyan@alibaba-inc.com)
  *
  * 2018-Mar-12 3:29:12 PM

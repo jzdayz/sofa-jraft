@@ -16,84 +16,19 @@
  */
 package com.alipay.sofa.jraft.core;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.alipay.sofa.jraft.Closure;
-import com.alipay.sofa.jraft.FSMCaller;
-import com.alipay.sofa.jraft.JRaftServiceFactory;
-import com.alipay.sofa.jraft.Node;
-import com.alipay.sofa.jraft.NodeManager;
-import com.alipay.sofa.jraft.ReadOnlyService;
-import com.alipay.sofa.jraft.ReplicatorGroup;
-import com.alipay.sofa.jraft.Status;
-import com.alipay.sofa.jraft.closure.CatchUpClosure;
-import com.alipay.sofa.jraft.closure.ClosureQueue;
-import com.alipay.sofa.jraft.closure.ClosureQueueImpl;
-import com.alipay.sofa.jraft.closure.ReadIndexClosure;
-import com.alipay.sofa.jraft.closure.SynchronizedClosure;
+import com.alipay.sofa.jraft.*;
+import com.alipay.sofa.jraft.closure.*;
 import com.alipay.sofa.jraft.conf.Configuration;
 import com.alipay.sofa.jraft.conf.ConfigurationEntry;
 import com.alipay.sofa.jraft.conf.ConfigurationManager;
-import com.alipay.sofa.jraft.entity.Ballot;
-import com.alipay.sofa.jraft.entity.EnumOutter;
-import com.alipay.sofa.jraft.entity.LeaderChangeContext;
-import com.alipay.sofa.jraft.entity.LogEntry;
-import com.alipay.sofa.jraft.entity.LogId;
-import com.alipay.sofa.jraft.entity.NodeId;
-import com.alipay.sofa.jraft.entity.PeerId;
-import com.alipay.sofa.jraft.entity.RaftOutter;
-import com.alipay.sofa.jraft.entity.Task;
-import com.alipay.sofa.jraft.entity.UserLog;
+import com.alipay.sofa.jraft.entity.*;
 import com.alipay.sofa.jraft.error.LogIndexOutOfBoundsException;
 import com.alipay.sofa.jraft.error.LogNotFoundException;
 import com.alipay.sofa.jraft.error.RaftError;
 import com.alipay.sofa.jraft.error.RaftException;
-import com.alipay.sofa.jraft.option.BallotBoxOptions;
-import com.alipay.sofa.jraft.option.BootstrapOptions;
-import com.alipay.sofa.jraft.option.FSMCallerOptions;
-import com.alipay.sofa.jraft.option.LogManagerOptions;
-import com.alipay.sofa.jraft.option.NodeOptions;
-import com.alipay.sofa.jraft.option.RaftMetaStorageOptions;
-import com.alipay.sofa.jraft.option.RaftOptions;
-import com.alipay.sofa.jraft.option.ReadOnlyOption;
-import com.alipay.sofa.jraft.option.ReadOnlyServiceOptions;
-import com.alipay.sofa.jraft.option.ReplicatorGroupOptions;
-import com.alipay.sofa.jraft.option.SnapshotExecutorOptions;
-import com.alipay.sofa.jraft.rpc.RaftClientService;
-import com.alipay.sofa.jraft.rpc.RaftServerService;
-import com.alipay.sofa.jraft.rpc.RpcRequestClosure;
-import com.alipay.sofa.jraft.rpc.RpcRequests.AppendEntriesRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.AppendEntriesResponse;
-import com.alipay.sofa.jraft.rpc.RpcRequests.InstallSnapshotRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.InstallSnapshotResponse;
-import com.alipay.sofa.jraft.rpc.RpcRequests.ReadIndexRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.ReadIndexResponse;
-import com.alipay.sofa.jraft.rpc.RpcRequests.RequestVoteRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.RequestVoteResponse;
-import com.alipay.sofa.jraft.rpc.RpcRequests.TimeoutNowRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.TimeoutNowResponse;
-import com.alipay.sofa.jraft.rpc.RpcResponseClosure;
-import com.alipay.sofa.jraft.rpc.RpcResponseClosureAdapter;
-import com.alipay.sofa.jraft.rpc.RpcResponseFactory;
+import com.alipay.sofa.jraft.option.*;
+import com.alipay.sofa.jraft.rpc.*;
+import com.alipay.sofa.jraft.rpc.RpcRequests.*;
 import com.alipay.sofa.jraft.rpc.impl.core.BoltRaftClientService;
 import com.alipay.sofa.jraft.storage.LogManager;
 import com.alipay.sofa.jraft.storage.LogStorage;
@@ -101,29 +36,22 @@ import com.alipay.sofa.jraft.storage.RaftMetaStorage;
 import com.alipay.sofa.jraft.storage.SnapshotExecutor;
 import com.alipay.sofa.jraft.storage.impl.LogManagerImpl;
 import com.alipay.sofa.jraft.storage.snapshot.SnapshotExecutorImpl;
-import com.alipay.sofa.jraft.util.Describer;
-import com.alipay.sofa.jraft.util.DisruptorBuilder;
-import com.alipay.sofa.jraft.util.DisruptorMetricSet;
-import com.alipay.sofa.jraft.util.JRaftServiceLoader;
-import com.alipay.sofa.jraft.util.JRaftSignalHandler;
-import com.alipay.sofa.jraft.util.LogExceptionHandler;
-import com.alipay.sofa.jraft.util.NamedThreadFactory;
-import com.alipay.sofa.jraft.util.OnlyForTest;
-import com.alipay.sofa.jraft.util.Platform;
-import com.alipay.sofa.jraft.util.RepeatedTimer;
-import com.alipay.sofa.jraft.util.Requires;
-import com.alipay.sofa.jraft.util.SignalHelper;
-import com.alipay.sofa.jraft.util.ThreadHelper;
-import com.alipay.sofa.jraft.util.ThreadId;
-import com.alipay.sofa.jraft.util.Utils;
+import com.alipay.sofa.jraft.util.*;
 import com.google.protobuf.Message;
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.EventFactory;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.EventTranslator;
-import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.*;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.nio.ByteBuffer;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * The raft replica node implementation.
@@ -535,6 +463,7 @@ public class NodeImpl implements Node, RaftServerService {
         this.logStorage = this.serviceFactory.createLogStorage(this.options.getLogUri(), this.raftOptions);
         this.logManager = new LogManagerImpl();
         final LogManagerOptions opts = new LogManagerOptions();
+        // 日志编解码
         opts.setLogEntryCodecFactory(this.serviceFactory.createLogEntryCodecFactory());
         opts.setLogStorage(this.logStorage);
         opts.setConfigurationManager(this.configManager);
@@ -732,21 +661,24 @@ public class NodeImpl implements Node, RaftServerService {
         Requires.requireNonNull(opts, "Null node options");
         Requires.requireNonNull(opts.getRaftOptions(), "Null raft options");
         Requires.requireNonNull(opts.getServiceFactory(), "Null jraft service factory");
+        // 默认的ServiceFactory
         this.serviceFactory = opts.getServiceFactory();
         this.options = opts;
         this.raftOptions = opts.getRaftOptions();
+        // 指标上报
         this.metrics = new NodeMetrics(opts.isEnableMetrics());
-
+        // ip不可以是0.0.0.0
         if (this.serverId.getIp().equals(Utils.IP_ANY)) {
             LOG.error("Node can't started from IP_ANY.");
             return false;
         }
 
+        // 是否已经含有该ip和端口对应的节点
         if (!NodeManager.getInstance().serverExists(this.serverId.getEndpoint())) {
             LOG.error("No RPC server attached to, did you forget to call addService?");
             return false;
         }
-
+        // 定时任务线程池
         this.timerManager = new TimerManager();
         if (!this.timerManager.init(this.options.getTimerPoolSize())) {
             LOG.error("Fail to init timer manager.");
@@ -755,6 +687,7 @@ public class NodeImpl implements Node, RaftServerService {
 
         // Init timers
         final String suffix = getNodeId().toString();
+        // 投票任务
         this.voteTimer = new RepeatedTimer("JRaft-VoteTimer-" + suffix, this.options.getElectionTimeoutMs()) {
 
             @Override
@@ -767,6 +700,7 @@ public class NodeImpl implements Node, RaftServerService {
                 return randomTimeout(timeoutMs);
             }
         };
+        // 选举任务
         this.electionTimer = new RepeatedTimer("JRaft-ElectionTimer-" + suffix, this.options.getElectionTimeoutMs()) {
 
             @Override
@@ -779,6 +713,7 @@ public class NodeImpl implements Node, RaftServerService {
                 return randomTimeout(timeoutMs);
             }
         };
+        // 检查leader的心跳
         this.stepDownTimer = new RepeatedTimer("JRaft-StepDownTimer-" + suffix,
             this.options.getElectionTimeoutMs() >> 1) {
 
@@ -787,6 +722,7 @@ public class NodeImpl implements Node, RaftServerService {
                 handleStepDownTimeout();
             }
         };
+        // 快照任务
         this.snapshotTimer = new RepeatedTimer("JRaft-SnapshotTimer-" + suffix,
             this.options.getSnapshotIntervalSecs() * 1000) {
 
@@ -797,7 +733,6 @@ public class NodeImpl implements Node, RaftServerService {
         };
 
         this.configManager = new ConfigurationManager();
-
         this.applyDisruptor = DisruptorBuilder.<LogEntryAndClosure> newInstance() //
             .setRingBufferSize(this.raftOptions.getDisruptorBufferSize()) //
             .setEventFactory(new LogEntryAndClosureFactory()) //
@@ -812,7 +747,7 @@ public class NodeImpl implements Node, RaftServerService {
             this.metrics.getMetricRegistry().register("jraft-node-impl-disruptor",
                 new DisruptorMetricSet(this.applyQueue));
         }
-
+        // 状态机的调用者
         this.fsmCaller = new FSMCallerImpl();
         if (!initLogStorage()) {
             LOG.error("Node {} initLogStorage failed.", getNodeId());
@@ -1001,11 +936,14 @@ public class NodeImpl implements Node, RaftServerService {
             if (!this.leaderId.isEmpty() && this.state.compareTo(State.STATE_TRANSFERRING) > 0) {
                 this.fsmCaller.onStopFollowing(new LeaderChangeContext(this.leaderId.copy(), this.currTerm, status));
             }
+            // leader为空
             this.leaderId = PeerId.emptyPeer();
         } else {
             if (this.leaderId == null || this.leaderId.isEmpty()) {
+                // 结束follower
                 this.fsmCaller.onStartFollowing(new LeaderChangeContext(newLeaderId, this.currTerm, status));
             }
+            // 设置leader
             this.leaderId = newLeaderId.copy();
         }
     }
@@ -1013,18 +951,24 @@ public class NodeImpl implements Node, RaftServerService {
     // in writeLock
     private void checkStepDown(final long requestTerm, final PeerId serverId) {
         final Status status = new Status();
+        // 请求的任期和当前的任期不一致
         if (requestTerm > this.currTerm) {
             status.setError(RaftError.ENEWLEADER, "Raft node receives message from new leader with higher term.");
             stepDown(requestTerm, false, status);
-        } else if (this.state != State.STATE_FOLLOWER) {
+        }
+        // 当前不是follower
+        else if (this.state != State.STATE_FOLLOWER) {
             status.setError(RaftError.ENEWLEADER, "Candidate receives message from new leader with the same term.");
             stepDown(requestTerm, false, status);
-        } else if (this.leaderId.isEmpty()) {
+        }
+        // 当前的节点找不到leader
+        else if (this.leaderId.isEmpty()) {
             status.setError(RaftError.ENEWLEADER, "Follower receives message from new leader with the same term.");
             stepDown(requestTerm, false, status);
         }
         // save current leader
         if (this.leaderId == null || this.leaderId.isEmpty()) {
+            // 设置leader，检查leader是否是有效的
             resetLeaderId(serverId, status);
         }
     }
@@ -1072,24 +1016,36 @@ public class NodeImpl implements Node, RaftServerService {
     private void stepDown(final long term, final boolean wakeupCandidate, final Status status) {
         LOG.debug("Node {} stepDown, term={}, newTerm={}, wakeupCandidate={}.", getNodeId(), this.currTerm, term,
             wakeupCandidate);
+        // 节点未存活
         if (!this.state.isActive()) {
             return;
         }
+        // 当前状态是 candidate
         if (this.state == State.STATE_CANDIDATE) {
+            // 停止投票
             stopVoteTimer();
-        } else if (this.state.compareTo(State.STATE_TRANSFERRING) <= 0) {
+        }
+        // 当前是leader或者是leader转移的状态
+        else if (this.state.compareTo(State.STATE_TRANSFERRING) <= 0) {
+            // 停止检测leader的心跳
             stopStepDownTimer();
+            // 清空选票箱
             this.ballotBox.clearPendingTasks();
             // signal fsm leader stop immediately
+            // 当前状态是leader
             if (this.state == State.STATE_LEADER) {
+                // leaderStop事件
                 onLeaderStop(status);
             }
         }
         // reset leader_id
+        // 清空leader
         resetLeaderId(PeerId.emptyPeer(), status);
 
         // soft state in memory
+        // 设置follower
         this.state = State.STATE_FOLLOWER;
+
         this.confCtx.reset();
         updateLastLeaderTimestamp(Utils.monotonicMs());
         if (this.snapshotExecutor != null) {
@@ -1097,7 +1053,9 @@ public class NodeImpl implements Node, RaftServerService {
         }
 
         // meta state
+        // 请求的任期大于当前的任期
         if (term > this.currTerm) {
+            // 修改任期
             this.currTerm = term;
             this.votedId = PeerId.emptyPeer();
             this.metaStorage.setTermAndVotedFor(term, this.votedId);
@@ -1449,12 +1407,14 @@ public class NodeImpl implements Node, RaftServerService {
         boolean doUnlock = true;
         this.writeLock.lock();
         try {
+            // 未存活
             if (!this.state.isActive()) {
                 LOG.warn("Node {} is not in active state, currTerm={}.", getNodeId(), this.currTerm);
                 return RpcResponseFactory.newResponse(RaftError.EINVAL, "Node %s is not in active state, state %s.",
                     getNodeId(), this.state.name());
             }
             final PeerId candidateId = new PeerId();
+            // 无法格式化，请求的节点
             if (!candidateId.parse(request.getServerId())) {
                 LOG.warn("Node {} received PreVoteRequest from {} serverId bad format.", getNodeId(),
                     request.getServerId());
@@ -1464,16 +1424,19 @@ public class NodeImpl implements Node, RaftServerService {
             boolean granted = false;
             // noinspection ConstantConditions
             do {
+                // 有leader，但是很久没心跳信息
                 if (this.leaderId != null && !this.leaderId.isEmpty() && isCurrentLeaderValid()) {
                     LOG.info(
                         "Node {} ignore PreVoteRequest from {}, term={}, currTerm={}, because the leader {}'s lease is still valid.",
                         getNodeId(), request.getServerId(), request.getTerm(), this.currTerm, this.leaderId);
                     break;
                 }
+                // 请求任期小于当前任期
                 if (request.getTerm() < this.currTerm) {
                     LOG.info("Node {} ignore PreVoteRequest from {}, term={}, currTerm={}.", getNodeId(),
                         request.getServerId(), request.getTerm(), this.currTerm);
                     // A follower replicator may not be started when this node become leader, so we must check it.
+
                     checkReplicator(candidateId);
                     break;
                 } else if (request.getTerm() == this.currTerm + 1) {
@@ -1522,6 +1485,9 @@ public class NodeImpl implements Node, RaftServerService {
         return monotonicNowMs - this.lastLeaderTimestamp < this.options.getLeaderLeaseTimeoutMs();
     }
 
+    /**
+     *  心跳时间超时
+     */
     private boolean isCurrentLeaderValid() {
         return Utils.monotonicMs() - this.lastLeaderTimestamp < this.options.getElectionTimeoutMs();
     }
@@ -1632,6 +1598,7 @@ public class NodeImpl implements Node, RaftServerService {
         @Override
         public void run(final Status status) {
 
+            // not ok
             if (!status.isOk()) {
                 this.done.run(status);
                 return;
@@ -1639,6 +1606,7 @@ public class NodeImpl implements Node, RaftServerService {
 
             this.node.readLock.lock();
             try {
+                // 任期发生了变化，必须失败
                 if (this.term != this.node.currTerm) {
                     // The change of term indicates that leader has been changed during
                     // appending entries, so we can't respond ok to the old leader
@@ -1677,10 +1645,13 @@ public class NodeImpl implements Node, RaftServerService {
     @Override
     public Message handleAppendEntriesRequest(final AppendEntriesRequest request, final RpcRequestClosure done) {
         boolean doUnlock = true;
+        // 当前毫秒
         final long startMs = Utils.monotonicMs();
         this.writeLock.lock();
+        // 获取日志的总量
         final int entriesCount = request.getEntriesCount();
         try {
+            // 当前节点未存活
             if (!this.state.isActive()) {
                 LOG.warn("Node {} is not in active state, currTerm={}.", getNodeId(), this.currTerm);
                 return RpcResponseFactory.newResponse(RaftError.EINVAL, "Node %s is not in active state, state %s.",
@@ -1688,6 +1659,7 @@ public class NodeImpl implements Node, RaftServerService {
             }
 
             final PeerId serverId = new PeerId();
+            // 是否可以正确格式化
             if (!serverId.parse(request.getServerId())) {
                 LOG.warn("Node {} received AppendEntriesRequest from {} serverId bad format.", getNodeId(),
                     request.getServerId());
@@ -1696,6 +1668,7 @@ public class NodeImpl implements Node, RaftServerService {
             }
 
             // Check stale term
+            // 请求的节点的任期小于自己的任期
             if (request.getTerm() < this.currTerm) {
                 LOG.warn("Node {} ignore stale AppendEntriesRequest from {}, term={}, currTerm={}.", getNodeId(),
                     request.getServerId(), request.getTerm(), this.currTerm);
@@ -1707,6 +1680,7 @@ public class NodeImpl implements Node, RaftServerService {
 
             // Check term and state to step down
             checkStepDown(request.getTerm(), serverId);
+            // 如果leader不一致
             if (!serverId.equals(this.leaderId)) {
                 LOG.error("Another peer {} declares that it is the leader at term {} which was occupied by leader {}.",
                     serverId, this.currTerm, this.leaderId);
@@ -1720,17 +1694,21 @@ public class NodeImpl implements Node, RaftServerService {
                     .build();
             }
 
+            // 修改最后的leader时间，leader每次调用追加log(心跳)，都会重置这个值
             updateLastLeaderTimestamp(Utils.monotonicMs());
 
+            // 请求含有日志信息，但是正在安装快照
             if (entriesCount > 0 && this.snapshotExecutor != null && this.snapshotExecutor.isInstallingSnapshot()) {
                 LOG.warn("Node {} received AppendEntriesRequest while installing snapshot.", getNodeId());
                 return RpcResponseFactory.newResponse(RaftError.EBUSY, "Node %s:%s is installing snapshot.",
                     this.groupId, this.serverId);
             }
 
+            // 本次需要追加日志的前一个日志的信息(任期信息和index对比)
             final long prevLogIndex = request.getPrevLogIndex();
             final long prevLogTerm = request.getPrevLogTerm();
             final long localPrevLogTerm = this.logManager.getTerm(prevLogIndex);
+            // 比较同一个logIndex是否是同一个任期，或者根本没有这个index的信息
             if (localPrevLogTerm != prevLogTerm) {
                 final long lastLogIndex = this.logManager.getLastLogIndex();
 
@@ -1745,7 +1723,7 @@ public class NodeImpl implements Node, RaftServerService {
                     .setLastLogIndex(lastLogIndex) //
                     .build();
             }
-
+            // 表示心跳
             if (entriesCount == 0) {
                 // heartbeat
                 final AppendEntriesResponse.Builder respBuilder = AppendEntriesResponse.newBuilder() //
@@ -1766,7 +1744,7 @@ public class NodeImpl implements Node, RaftServerService {
             if (request.hasData()) {
                 allData = request.getData().asReadOnlyByteBuffer();
             }
-
+            // 请求的日志条目
             final List<RaftOutter.EntryMeta> entriesList = request.getEntriesList();
             for (int i = 0; i < entriesCount; i++) {
                 index++;
@@ -1776,7 +1754,9 @@ public class NodeImpl implements Node, RaftServerService {
 
                 if (logEntry != null) {
                     // Validate checksum
+                    // 数据校验，crc64 校验
                     if (this.raftOptions.isEnableLogEntryChecksum() && logEntry.isCorrupted()) {
+                        // 为通过校验
                         long realChecksum = logEntry.checksum();
                         LOG.error(
                             "Corrupted log entry received from leader, index={}, term={}, expectedChecksum={}, realChecksum={}",
@@ -1793,6 +1773,7 @@ public class NodeImpl implements Node, RaftServerService {
 
             final FollowerStableClosure closure = new FollowerStableClosure(request, AppendEntriesResponse.newBuilder()
                 .setTerm(this.currTerm), this, done, this.currTerm);
+            // 追加日志
             this.logManager.appendEntries(entries, closure);
             // update configuration after _log_manager updated its memory status
             this.conf = this.logManager.checkAndSetConfiguration(this.conf);
@@ -1828,7 +1809,7 @@ public class NodeImpl implements Node, RaftServerService {
                         "Invalid log entry that contains peers but is not ENTRY_TYPE_CONFIGURATION type: "
                                 + entry.getType());
                 }
-
+                // 填充logEntry的参与者
                 fillLogEntryPeers(entry, logEntry);
             } else if (entry.getType() == EnumOutter.EntryType.ENTRY_TYPE_CONFIGURATION) {
                 throw new IllegalStateException(

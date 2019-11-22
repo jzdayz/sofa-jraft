@@ -16,12 +16,7 @@
  */
 package com.alipay.sofa.jraft.rpc;
 
-import com.alipay.sofa.jraft.rpc.RpcRequests.AppendEntriesRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.InstallSnapshotRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.ReadIndexRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.ReadIndexResponse;
-import com.alipay.sofa.jraft.rpc.RpcRequests.RequestVoteRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.TimeoutNowRequest;
+import com.alipay.sofa.jraft.rpc.RpcRequests.*;
 import com.google.protobuf.Message;
 
 /**
@@ -36,6 +31,8 @@ public interface RaftServerService {
     /**
      * Handle pre-vote request.
      *
+     *  处理预投票功能
+     *
      * @param request   data of the pre vote
      * @return the response message
      */
@@ -43,6 +40,8 @@ public interface RaftServerService {
 
     /**
      * Handle request-vote request.
+     *
+     *  处理投票
      *
      * @param request   data of the vote
      * @return the response message
@@ -52,6 +51,8 @@ public interface RaftServerService {
     /**
      * Handle append-entries request, return response message or
      * called done.run() with response.
+     *
+     *  处理追加日志
      *
      * @param request   data of the entries to append
      * @param done      callback
@@ -63,6 +64,8 @@ public interface RaftServerService {
      * Handle install-snapshot request, return response message or
      * called done.run() with response.
      *
+     *  处理安装快照请求
+     *
      * @param request   data of the install snapshot request
      * @param done      callback
      * @return the response message
@@ -73,6 +76,8 @@ public interface RaftServerService {
      * Handle time-out-now request, return response message or
      * called done.run() with response.
      *
+     *  处理超时
+     *
      * @param request   data of the timeout now request
      * @param done      callback
      * @return the response message
@@ -81,6 +86,8 @@ public interface RaftServerService {
 
     /**
      * Handle read-index request, call the RPC closure with response.
+     *
+     *  处理readIndex请求
      *
      * @param request   data of the readIndex read
      * @param done      callback

@@ -16,15 +16,6 @@
  */
 package com.alipay.sofa.jraft.core;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.alipay.sofa.jraft.Closure;
 import com.alipay.sofa.jraft.FSMCaller;
 import com.alipay.sofa.jraft.StateMachine;
@@ -35,32 +26,25 @@ import com.alipay.sofa.jraft.closure.SaveSnapshotClosure;
 import com.alipay.sofa.jraft.closure.TaskClosure;
 import com.alipay.sofa.jraft.conf.Configuration;
 import com.alipay.sofa.jraft.conf.ConfigurationEntry;
-import com.alipay.sofa.jraft.entity.EnumOutter;
-import com.alipay.sofa.jraft.entity.LeaderChangeContext;
-import com.alipay.sofa.jraft.entity.LogEntry;
-import com.alipay.sofa.jraft.entity.LogId;
-import com.alipay.sofa.jraft.entity.PeerId;
-import com.alipay.sofa.jraft.entity.RaftOutter;
+import com.alipay.sofa.jraft.entity.*;
 import com.alipay.sofa.jraft.error.RaftError;
 import com.alipay.sofa.jraft.error.RaftException;
 import com.alipay.sofa.jraft.option.FSMCallerOptions;
 import com.alipay.sofa.jraft.storage.LogManager;
 import com.alipay.sofa.jraft.storage.snapshot.SnapshotReader;
 import com.alipay.sofa.jraft.storage.snapshot.SnapshotWriter;
-import com.alipay.sofa.jraft.util.DisruptorBuilder;
-import com.alipay.sofa.jraft.util.DisruptorMetricSet;
-import com.alipay.sofa.jraft.util.LogExceptionHandler;
-import com.alipay.sofa.jraft.util.NamedThreadFactory;
-import com.alipay.sofa.jraft.util.OnlyForTest;
-import com.alipay.sofa.jraft.util.Requires;
-import com.alipay.sofa.jraft.util.Utils;
-import com.lmax.disruptor.BlockingWaitStrategy;
-import com.lmax.disruptor.EventFactory;
-import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.EventTranslator;
-import com.lmax.disruptor.RingBuffer;
+import com.alipay.sofa.jraft.util.*;
+import com.lmax.disruptor.*;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * The finite state machine caller implementation.
@@ -258,6 +242,7 @@ public class FSMCallerImpl implements FSMCaller {
 
     @Override
     public boolean onSnapshotLoad(final LoadSnapshotClosure done) {
+        // 发布一个load事件
         return enqueueTask((task, sequence) -> {
             task.type = TaskType.SNAPSHOT_LOAD;
             task.done = done;
@@ -266,6 +251,7 @@ public class FSMCallerImpl implements FSMCaller {
 
     @Override
     public boolean onSnapshotSave(final SaveSnapshotClosure done) {
+        // 发布一个save事件
         return enqueueTask((task, sequence) -> {
             task.type = TaskType.SNAPSHOT_SAVE;
             task.done = done;
@@ -274,6 +260,7 @@ public class FSMCallerImpl implements FSMCaller {
 
     @Override
     public boolean onLeaderStop(final Status status) {
+        // leader结束事件
         return enqueueTask((task, sequence) -> {
             task.type = TaskType.LEADER_STOP;
             task.status = new Status(status);
@@ -282,6 +269,7 @@ public class FSMCallerImpl implements FSMCaller {
 
     @Override
     public boolean onLeaderStart(final long term) {
+        // leader开始事件
         return enqueueTask((task, sequence) -> {
             task.type = TaskType.LEADER_START;
             task.term = term;
@@ -290,6 +278,7 @@ public class FSMCallerImpl implements FSMCaller {
 
     @Override
     public boolean onStartFollowing(final LeaderChangeContext ctx) {
+        // 开始变成follower事件
         return enqueueTask((task, sequence) -> {
             task.type = TaskType.START_FOLLOWING;
             task.leaderChangeCtx = new LeaderChangeContext(ctx.getLeaderId(), ctx.getTerm(), ctx.getStatus());
@@ -298,6 +287,7 @@ public class FSMCallerImpl implements FSMCaller {
 
     @Override
     public boolean onStopFollowing(final LeaderChangeContext ctx) {
+        // 结束follower事件
         return enqueueTask((task, sequence) -> {
             task.type = TaskType.STOP_FOLLOWING;
             task.leaderChangeCtx = new LeaderChangeContext(ctx.getLeaderId(), ctx.getTerm(), ctx.getStatus());
@@ -338,6 +328,7 @@ public class FSMCallerImpl implements FSMCaller {
             return false;
         }
         final OnErrorClosure c = new OnErrorClosure(error);
+        // error 事件
         return enqueueTask((task, sequence) -> {
             task.type = TaskType.ERROR;
             task.done = c;
