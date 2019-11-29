@@ -460,6 +460,7 @@ public class NodeImpl implements Node, RaftServerService {
 
     private boolean initLogStorage() {
         Requires.requireNonNull(this.fsmCaller, "Null fsm caller");
+        // 日志存储
         this.logStorage = this.serviceFactory.createLogStorage(this.options.getLogUri(), this.raftOptions);
         this.logManager = new LogManagerImpl();
         final LogManagerOptions opts = new LogManagerOptions();
@@ -731,7 +732,7 @@ public class NodeImpl implements Node, RaftServerService {
                 handleSnapshotTimeout();
             }
         };
-
+        // 设置管理器
         this.configManager = new ConfigurationManager();
         this.applyDisruptor = DisruptorBuilder.<LogEntryAndClosure> newInstance() //
             .setRingBufferSize(this.raftOptions.getDisruptorBufferSize()) //
@@ -740,7 +741,9 @@ public class NodeImpl implements Node, RaftServerService {
             .setProducerType(ProducerType.MULTI) //
             .setWaitStrategy(new BlockingWaitStrategy()) //
             .build();
+        // 事件处理器
         this.applyDisruptor.handleEventsWith(new LogEntryAndClosureHandler());
+        // 异常处理器
         this.applyDisruptor.setDefaultExceptionHandler(new LogExceptionHandler<Object>(getClass().getSimpleName()));
         this.applyQueue = this.applyDisruptor.start();
         if (this.metrics.getMetricRegistry() != null) {

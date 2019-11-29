@@ -16,8 +16,6 @@
  */
 package com.alipay.sofa.jraft.storage;
 
-import java.util.List;
-
 import com.alipay.sofa.jraft.Closure;
 import com.alipay.sofa.jraft.Lifecycle;
 import com.alipay.sofa.jraft.Status;
@@ -27,6 +25,8 @@ import com.alipay.sofa.jraft.entity.LogId;
 import com.alipay.sofa.jraft.entity.RaftOutter.SnapshotMeta;
 import com.alipay.sofa.jraft.option.LogManagerOptions;
 import com.alipay.sofa.jraft.util.Describer;
+
+import java.util.List;
 
 /**
  * Log manager.
@@ -93,6 +93,8 @@ public interface LogManager extends Lifecycle<LogManagerOptions>, Describer {
         /**
          * Called when last log index is changed.
          *
+         * 最后日志index改变调用
+         *
          * @param lastLogIndex last log index
          */
         void onLastLogIndexChanged(final long lastLogIndex);
@@ -100,16 +102,19 @@ public interface LogManager extends Lifecycle<LogManagerOptions>, Describer {
 
     /**
      * Adds a last log index listener
+     *   log index追加时调用
      */
     void addLastLogIndexListener(final LastLogIndexListener listener);
 
     /**
      * Remove the last log index listener.
+     *  移除最后log index调用
      */
     void removeLastLogIndexListener(final LastLogIndexListener listener);
 
     /**
      * Wait the log manager to be shut down.
+     *  等待关闭
      *
      * @throws InterruptedException if the current thread is interrupted
      *         while waiting
@@ -118,6 +123,7 @@ public interface LogManager extends Lifecycle<LogManagerOptions>, Describer {
 
     /**
      * Append log entry vector and wait until it's stable (NOT COMMITTED!)
+     * 追加日志
      *
      * @param entries log entries
      * @param done    callback
