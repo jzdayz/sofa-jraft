@@ -173,8 +173,10 @@ public class FSMCallerImpl implements FSMCaller {
             .setProducerType(ProducerType.MULTI) //
             .setWaitStrategy(new BlockingWaitStrategy()) //
             .build();
+        // 设置任务处理
         this.disruptor.handleEventsWith(new ApplyTaskHandler());
         this.disruptor.setDefaultExceptionHandler(new LogExceptionHandler<Object>(getClass().getSimpleName()));
+        // 任务队列
         this.taskQueue = this.disruptor.start();
         if (this.nodeMetrics.getMetricRegistry() != null) {
             this.nodeMetrics.getMetricRegistry().register("jraft-fsm-caller-disruptor",
@@ -517,6 +519,10 @@ public class FSMCallerImpl implements FSMCaller {
         }
     }
 
+    /**
+     *  调用状态机，处理任务
+     * @param iterImpl
+     */
     private void doApplyTasks(final IteratorImpl iterImpl) {
         final IteratorWrapper iter = new IteratorWrapper(iterImpl);
         final long startApplyMs = Utils.monotonicMs();

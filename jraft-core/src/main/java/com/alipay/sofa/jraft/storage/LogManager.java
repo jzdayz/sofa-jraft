@@ -147,6 +147,7 @@ public interface LogManager extends Lifecycle<LogManagerOptions>, Describer {
 
     /**
      * Get the log entry at index.
+     *  根据index获取日志条目
      *
      * @param index the index of log entry
      * @return the log entry with {@code index}
@@ -155,6 +156,7 @@ public interface LogManager extends Lifecycle<LogManagerOptions>, Describer {
 
     /**
      * Get the log term at index.
+     *  获取指定index的任期
      *
      * @param index the index of log entry
      * @return the term of log entry
@@ -163,18 +165,21 @@ public interface LogManager extends Lifecycle<LogManagerOptions>, Describer {
 
     /**
      * Get the first log index of log
+     *  获取第一个日志的index
      */
     long getFirstLogIndex();
 
     /**
      * Get the last log index of log
+     * 获取最后一个日志的index
      */
     long getLastLogIndex();
 
     /**
      * Get the last log index of log
+     *  获取最后一个日志的index
      *
-     * @param isFlush whether to flush from disk.
+     * @param isFlush whether to flush from disk. 是否刷新磁盘
      */
     long getLastLogIndex(final boolean isFlush);
 

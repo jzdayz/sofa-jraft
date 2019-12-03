@@ -194,7 +194,7 @@ public class NodeImpl implements Node, RaftServerService {
                 event.shutdownLatch.countDown();
                 return;
             }
-
+            // 累加到一定的阈值，然后批处理
             this.tasks.add(event);
             if (this.tasks.size() >= NodeImpl.this.raftOptions.getApplyBatch() || endOfBatch) {
                 executeApplyingTasks(this.tasks);
@@ -472,6 +472,7 @@ public class NodeImpl implements Node, RaftServerService {
         opts.setNodeMetrics(this.metrics);
         opts.setDisruptorBufferSize(this.raftOptions.getDisruptorBufferSize());
         opts.setRaftOptions(this.raftOptions);
+        // 初始化日志管理
         return this.logManager.init(opts);
     }
 
@@ -745,6 +746,7 @@ public class NodeImpl implements Node, RaftServerService {
         this.applyDisruptor.handleEventsWith(new LogEntryAndClosureHandler());
         // 异常处理器
         this.applyDisruptor.setDefaultExceptionHandler(new LogExceptionHandler<Object>(getClass().getSimpleName()));
+        // 启动队列
         this.applyQueue = this.applyDisruptor.start();
         if (this.metrics.getMetricRegistry() != null) {
             this.metrics.getMetricRegistry().register("jraft-node-impl-disruptor",
@@ -756,23 +758,27 @@ public class NodeImpl implements Node, RaftServerService {
             LOG.error("Node {} initLogStorage failed.", getNodeId());
             return false;
         }
+        // 初始化日志存储
         if (!initMetaStorage()) {
             LOG.error("Node {} initMetaStorage failed.", getNodeId());
             return false;
         }
+        // 初始化fsmCaller
         if (!initFSMCaller(new LogId(0, 0))) {
             LOG.error("Node {} initFSMCaller failed.", getNodeId());
             return false;
         }
+        // 投票箱
         this.ballotBox = new BallotBox();
         final BallotBoxOptions ballotBoxOpts = new BallotBoxOptions();
         ballotBoxOpts.setWaiter(this.fsmCaller);
         ballotBoxOpts.setClosureQueue(this.closureQueue);
+        // 投票箱初始化
         if (!this.ballotBox.init(ballotBoxOpts)) {
             LOG.error("Node {} init ballotBox failed.", getNodeId());
             return false;
         }
-
+        // 初始化快照存储
         if (!initSnapshotStorage()) {
             LOG.error("Node {} initSnapshotStorage failed.", getNodeId());
             return false;
@@ -814,11 +820,12 @@ public class NodeImpl implements Node, RaftServerService {
 
         // Adds metric registry to RPC service.
         this.options.setMetricRegistry(this.metrics.getMetricRegistry());
-
+        // rpc初始化
         if (!this.rpcService.init(this.options)) {
             LOG.error("Fail to init rpc service.");
             return false;
         }
+        // 初始化复制组
         this.replicatorGroup.init(new NodeId(this.groupId, this.serverId), rgOpts);
 
         this.readOnlyService = new ReadOnlyServiceImpl();
@@ -1067,7 +1074,7 @@ public class NodeImpl implements Node, RaftServerService {
         if (wakeupCandidate) {
             this.wakingCandidate = this.replicatorGroup.stopAllAndFindTheNextCandidate(this.conf);
             if (this.wakingCandidate != null) {
-                Replicator.sendTimeoutNowAndStop(this.wakingCandidate, this.options.getElectionTimeoutMs());
+                 Replicator.sendTimeoutNowAndStop(this.wakingCandidate, this.options.getElectionTimeoutMs());
             }
         } else {
             this.replicatorGroup.stopAll();
@@ -1127,6 +1134,7 @@ public class NodeImpl implements Node, RaftServerService {
         this.writeLock.lock();
         try {
             final int size = tasks.size();
+            // 如果不是leader不可以处理任务
             if (this.state != State.STATE_LEADER) {
                 final Status st = new Status();
                 if (this.state != State.STATE_TRANSFERRING) {
@@ -1143,6 +1151,7 @@ public class NodeImpl implements Node, RaftServerService {
             final List<LogEntry> entries = new ArrayList<>(size);
             for (int i = 0; i < size; i++) {
                 final LogEntryAndClosure task = tasks.get(i);
+                // 期待的任期发生了变化
                 if (task.expectedTerm != -1 && task.expectedTerm != this.currTerm) {
                     LOG.debug("Node {} can't apply task whose expectedTerm={} doesn't match currTerm={}.", getNodeId(),
                         task.expectedTerm, this.currTerm);
@@ -1237,12 +1246,15 @@ public class NodeImpl implements Node, RaftServerService {
                 this.ackFailures++;
             }
             // Include leader self vote yes.
+            // 过半响应ok
             if (this.ackSuccess + 1 >= this.quorum) {
                 this.respBuilder.setSuccess(true);
                 this.closure.setResponse(this.respBuilder.build());
                 this.closure.run(Status.OK());
                 this.isDone = true;
-            } else if (this.ackFailures >= this.failPeersThreshold) {
+            }
+            // 过半或者半数响应失败
+            else if (this.ackFailures >= this.failPeersThreshold) {
                 this.respBuilder.setSuccess(false);
                 this.closure.setResponse(this.respBuilder.build());
                 this.closure.run(Status.OK());
@@ -1304,6 +1316,7 @@ public class NodeImpl implements Node, RaftServerService {
     private void readLeader(final ReadIndexRequest request, final ReadIndexResponse.Builder respBuilder,
                             final RpcResponseClosure<ReadIndexResponse> closure) {
         final int quorum = getQuorum();
+        // 只有一个节点
         if (quorum <= 1) {
             // Only one peer, fast path.
             respBuilder.setSuccess(true) //
@@ -1314,6 +1327,7 @@ public class NodeImpl implements Node, RaftServerService {
         }
 
         final long lastCommittedIndex = this.ballotBox.getLastCommittedIndex();
+        // 日志的任期和当前的任期不一致
         if (this.logManager.getTerm(lastCommittedIndex) != this.currTerm) {
             // Reject read only request when this leader has not committed any log entry at its term
             closure
@@ -1329,6 +1343,7 @@ public class NodeImpl implements Node, RaftServerService {
             // request from follower, check if the follower is in current conf.
             final PeerId peer = new PeerId();
             peer.parse(request.getServerId());
+            // 当前的配置中，没有请求的节点
             if (!this.conf.contains(peer)) {
                 closure
                     .run(new Status(RaftError.EPERM, "Peer %s is not in current configuration: {}.", peer, this.conf));
@@ -1337,6 +1352,7 @@ public class NodeImpl implements Node, RaftServerService {
         }
 
         ReadOnlyOption readOnlyOpt = this.raftOptions.getReadOnlyOptions();
+        // 如果设置是ReadOnlyLeaseBased && leader没有效
         if (readOnlyOpt == ReadOnlyOption.ReadOnlyLeaseBased && !isLeaderLeaseValid()) {
             // If leader lease timeout, we must change option to ReadOnlySafe
             readOnlyOpt = ReadOnlyOption.ReadOnlySafe;
@@ -1353,6 +1369,7 @@ public class NodeImpl implements Node, RaftServerService {
                     if (peer.equals(this.serverId)) {
                         continue;
                     }
+                    // 每一个节点检测心跳
                     this.replicatorGroup.sendHeartbeat(peer, heartbeatDone);
                 }
                 break;
@@ -1480,7 +1497,9 @@ public class NodeImpl implements Node, RaftServerService {
         if (checkLeaderLease(monotonicNowMs)) {
             return true;
         }
+        // 检查是否大多数节点存活
         checkDeadNodes0(this.conf.getConf().getPeers(), monotonicNowMs, false, null);
+        // leader未超时
         return checkLeaderLease(monotonicNowMs);
     }
 
@@ -1639,7 +1658,14 @@ public class NodeImpl implements Node, RaftServerService {
             this.responseBuilder.setSuccess(true).setTerm(this.term);
 
             // Ballot box is thread safe and tolerates disorder.
+            System.out.println("1111111-----");
             this.node.ballotBox.setLastCommittedIndex(this.committedIndex);
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            System.out.println("1111111-----");
 
             this.done.sendResponse(this.responseBuilder.build());
         }
@@ -1953,6 +1979,7 @@ public class NodeImpl implements Node, RaftServerService {
 
     private boolean checkDeadNodes0(final List<PeerId> peers, final long monotonicNowMs, final boolean checkReplicator,
                                     final Configuration deadNodes) {
+        // leader超时时间
         final int leaderLeaseTimeoutMs = this.options.getLeaderLeaseTimeoutMs();
         int aliveCount = 0;
         long startLease = Long.MAX_VALUE;
@@ -1964,7 +1991,9 @@ public class NodeImpl implements Node, RaftServerService {
             if (checkReplicator) {
                 checkReplicator(peer);
             }
+            // 获取节点的最后rpc时间
             final long lastRpcSendTimestamp = this.replicatorGroup.getLastRpcSendTimestamp(peer);
+            // 节点的最后rpc时间小于leader超时时间
             if (monotonicNowMs - lastRpcSendTimestamp <= leaderLeaseTimeoutMs) {
                 aliveCount++;
                 if (startLease > lastRpcSendTimestamp) {
@@ -1972,10 +2001,12 @@ public class NodeImpl implements Node, RaftServerService {
                 }
                 continue;
             }
+            // 否则就是死掉的节点了
             if (deadNodes != null) {
                 deadNodes.addPeer(peer);
             }
         }
+        // 如果大部分节点存活
         if (aliveCount >= peers.size() / 2 + 1) {
             updateLastLeaderTimestamp(startLease);
             return true;

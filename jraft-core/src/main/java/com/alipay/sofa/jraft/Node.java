@@ -16,8 +16,6 @@
  */
 package com.alipay.sofa.jraft;
 
-import java.util.List;
-
 import com.alipay.sofa.jraft.closure.ReadIndexClosure;
 import com.alipay.sofa.jraft.conf.Configuration;
 import com.alipay.sofa.jraft.core.NodeMetrics;
@@ -31,6 +29,8 @@ import com.alipay.sofa.jraft.error.LogNotFoundException;
 import com.alipay.sofa.jraft.option.NodeOptions;
 import com.alipay.sofa.jraft.option.RaftOptions;
 import com.alipay.sofa.jraft.util.Describer;
+
+import java.util.List;
 
 /**
  * A raft replica node.
@@ -93,6 +93,8 @@ public interface Node extends Lifecycle<NodeOptions>, Describer {
 
     /**
      * [Thread-safe and wait-free]
+     *
+     *  leader 调用
      *
      * Apply task to the replicated-state-machine
      *

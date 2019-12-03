@@ -21,18 +21,18 @@ import com.alipay.remoting.exception.RemotingException;
 import com.alipay.sofa.jraft.RouteTable;
 import com.alipay.sofa.jraft.conf.Configuration;
 import com.alipay.sofa.jraft.entity.PeerId;
+import com.alipay.sofa.jraft.example.counter.rpc.GetValueRequest;
 import com.alipay.sofa.jraft.example.counter.rpc.IncrementAndGetRequest;
 import com.alipay.sofa.jraft.option.CliOptions;
 import com.alipay.sofa.jraft.rpc.impl.cli.BoltCliClientService;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicReference;
 
-public class CounterClient {
+public class CounterClientSimple {
 
-    public static void main(String[] args) throws Exception {
-        args = new String[]{"test","127.0.0.1:8082"};
+    public static void main( String[] args) throws Exception {
+        args = new String[]{"test","127.0.0.1:8081"};
         if (args.length != 2) {
             System.out.println("Useage : java com.alipay.sofa.jraft.example.counter.CounterClient {groupId} {conf}");
             System.out
@@ -61,50 +61,39 @@ public class CounterClient {
         final int n = 1;
         final CountDownLatch latch = new CountDownLatch(n);
         final long start = System.currentTimeMillis();
-//        for (int i = 0; i < n; i++) {
-//            incrementAndGet(cliClientService, leader, 1, latch);
-//        }
-
-        AtomicReference<PeerId> peerId = new AtomicReference<>(leader);
-        RouteTable.getInstance().getConfiguration("test").getPeers().forEach(e->{
-            if(!leader.equals(e)){
-                peerId.set(e);
-            }
-        });
-
-        get(cliClientService,peerId,latch);
-
+        for (int i = 0; i < n; i++) {
+            get(cliClientService, leader, i, latch);
+        }
         latch.await();
         System.out.println(n + " ops, cost : " + (System.currentTimeMillis() - start) + " ms.");
         System.exit(0);
     }
 
-    private static void get(BoltCliClientService cliClientService, AtomicReference<PeerId> peerId, CountDownLatch latch)
-                                                                                                                        throws Exception {
+    private static void get(final BoltCliClientService cliClientService, final PeerId leader,
+                            final long delta, CountDownLatch latch) throws Exception{
+        final GetValueRequest request = new GetValueRequest();
+        request.setReadOnlySafe(true);
+        cliClientService.getRpcClient().invokeWithCallback(leader.getEndpoint().toString(), request,
+                new InvokeCallback() {
 
-        final IncrementAndGetRequest request = new IncrementAndGetRequest();
-        request.setDelta(1);
+                    @Override
+                    public void onResponse(Object result) {
+                        latch.countDown();
+                        System.out.println("Get result:" + result);
+                    }
 
-        cliClientService.getRpcClient().invokeWithCallback(peerId.get().getEndpoint().toString(), request,
-            new InvokeCallback() {
-                @Override
-                public void onResponse(Object result) {
-                    latch.countDown();
-                    System.err.println(" Get Result : " + result);
-                }
+                    @Override
+                    public void onException(Throwable e) {
+                        e.printStackTrace();
+                        latch.countDown();
 
-                @Override
-                public void onException(Throwable e) {
-                    latch.countDown();
-                    e.printStackTrace();
-                }
+                    }
 
-                @Override
-                public Executor getExecutor() {
-                    return null;
-                }
-            }, 1000_0000);
-
+                    @Override
+                    public Executor getExecutor() {
+                        return null;
+                    }
+                }, 5000);
     }
 
     private static void incrementAndGet(final BoltCliClientService cliClientService, final PeerId leader,

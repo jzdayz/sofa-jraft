@@ -16,11 +16,6 @@
  */
 package com.alipay.sofa.jraft.rpc.impl.core;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Future;
-
 import com.alipay.remoting.ConnectionEventType;
 import com.alipay.remoting.InvokeContext;
 import com.alipay.remoting.rpc.RpcClient;
@@ -28,18 +23,7 @@ import com.alipay.sofa.jraft.ReplicatorGroup;
 import com.alipay.sofa.jraft.option.NodeOptions;
 import com.alipay.sofa.jraft.option.RpcOptions;
 import com.alipay.sofa.jraft.rpc.RaftClientService;
-import com.alipay.sofa.jraft.rpc.RpcRequests.AppendEntriesRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.AppendEntriesResponse;
-import com.alipay.sofa.jraft.rpc.RpcRequests.GetFileRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.GetFileResponse;
-import com.alipay.sofa.jraft.rpc.RpcRequests.InstallSnapshotRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.InstallSnapshotResponse;
-import com.alipay.sofa.jraft.rpc.RpcRequests.ReadIndexRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.ReadIndexResponse;
-import com.alipay.sofa.jraft.rpc.RpcRequests.RequestVoteRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.RequestVoteResponse;
-import com.alipay.sofa.jraft.rpc.RpcRequests.TimeoutNowRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.TimeoutNowResponse;
+import com.alipay.sofa.jraft.rpc.RpcRequests.*;
 import com.alipay.sofa.jraft.rpc.RpcResponseClosure;
 import com.alipay.sofa.jraft.rpc.impl.AbstractBoltClientService;
 import com.alipay.sofa.jraft.util.Endpoint;
@@ -47,6 +31,11 @@ import com.alipay.sofa.jraft.util.Utils;
 import com.alipay.sofa.jraft.util.concurrent.DefaultFixedThreadsExecutorGroupFactory;
 import com.alipay.sofa.jraft.util.concurrent.FixedThreadsExecutorGroup;
 import com.google.protobuf.Message;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
 
 /**
  * Raft rpc service based bolt.
@@ -72,6 +61,7 @@ public class BoltRaftClientService extends AbstractBoltClientService implements 
 
     @Override
     protected void configRpcClient(final RpcClient rpcClient) {
+        // 设置connection的 处理器
         rpcClient.addConnectionEventProcessor(ConnectionEventType.CONNECT, new ClientServiceConnectionEventProcessor(
             this.rgGroup));
     }

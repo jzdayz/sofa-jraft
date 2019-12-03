@@ -100,15 +100,35 @@ public class CounterServer {
         return response;
     }
 
-    public static void main(String[] args) throws IOException {
-        //        args = new String[]{"/tmp/server3","test","127.0.0.1:8083",
-        //                "127.0.0.1:8081,127.0.0.1:8082,127.0.0.1:8083"
-        //        };
-        //        args = new String[]{"/tmp/server2","test","127.0.0.1:8082",
-        //                "127.0.0.1:8081,127.0.0.1:8082,127.0.0.1:8083"
-        //        };
-        args = new String[] { "/Users/jzdayz/Downloads/server1", "test", "127.0.0.1:8081",
-                "127.0.0.1:8081,127.0.0.1:8082,127.0.0.1:8083"};
+    public static void main(String[] args) throws Exception{
+
+
+        int i = 2;
+
+
+
+        if (i == 0) {
+            args = new String[]{"/tmp/server111", "test", "127.0.0.1:8081",
+                    "127.0.0.1:8081,127.0.0.1:8082,127.0.0.1:8083"
+            };
+            doUp(args);
+        }
+        if (i == 1) {
+            args = new String[]{"/tmp/server222", "test", "127.0.0.1:8082",
+                    "127.0.0.1:8081,127.0.0.1:8082,127.0.0.1:8083"
+            };
+            doUp(args);
+        }
+        if (i == 2){
+            args = new String[]{"/tmp/server333","test","127.0.0.1:8083",
+                    "127.0.0.1:8081,127.0.0.1:8082,127.0.0.1:8083"
+            };
+            doUp(args);
+        }
+    }
+
+    public static void doUp(String[] args) throws IOException {
+
         if (args.length != 4) {
             System.out
                 .println("Useage : java com.alipay.sofa.jraft.example.counter.CounterServer {dataPath} {groupId} {serverId} {initConf}");

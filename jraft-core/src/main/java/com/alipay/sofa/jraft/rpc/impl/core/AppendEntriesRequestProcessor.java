@@ -16,14 +16,6 @@
  */
 package com.alipay.sofa.jraft.rpc.impl.core;
 
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executor;
-
-import org.apache.commons.lang.StringUtils;
-
 import com.alipay.remoting.AsyncContext;
 import com.alipay.remoting.BizContext;
 import com.alipay.remoting.Connection;
@@ -40,6 +32,13 @@ import com.alipay.sofa.jraft.util.Utils;
 import com.alipay.sofa.jraft.util.concurrent.MpscSingleThreadExecutor;
 import com.alipay.sofa.jraft.util.concurrent.SingleThreadExecutor;
 import com.google.protobuf.Message;
+import org.apache.commons.lang.StringUtils;
+
+import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executor;
 
 /**
  * Append entries request processor.
@@ -345,13 +344,13 @@ public class AppendEntriesRequestProcessor extends NodeRequestProcessor<AppendEn
         if (node.getRaftOptions().isReplicatorPipeline()) {
             final String groupId = request.getGroupId();
             final String peerId = request.getPeerId();
-
             final int reqSequence = getAndIncrementSequence(groupId, peerId, done.getBizContext().getConnection());
             final Message response = service.handleAppendEntriesRequest(request, new SequenceRpcRequestClosure(done,
                 reqSequence, groupId, peerId));
             if (response != null) {
                 sendSequenceResponse(groupId, peerId, reqSequence, done.getAsyncContext(), done.getBizContext(),
                     response);
+
             }
             return null;
         } else {

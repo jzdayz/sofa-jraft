@@ -16,21 +16,6 @@
  */
 package com.alipay.sofa.jraft.core;
 
-import java.nio.ByteBuffer;
-import java.util.ArrayDeque;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-
-import javax.annotation.concurrent.ThreadSafe;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.alipay.sofa.jraft.Node;
 import com.alipay.sofa.jraft.Status;
 import com.alipay.sofa.jraft.closure.CatchUpClosure;
@@ -43,30 +28,24 @@ import com.alipay.sofa.jraft.error.RaftException;
 import com.alipay.sofa.jraft.option.RaftOptions;
 import com.alipay.sofa.jraft.option.ReplicatorOptions;
 import com.alipay.sofa.jraft.rpc.RaftClientService;
-import com.alipay.sofa.jraft.rpc.RpcRequests.AppendEntriesRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.AppendEntriesResponse;
-import com.alipay.sofa.jraft.rpc.RpcRequests.InstallSnapshotRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.InstallSnapshotResponse;
-import com.alipay.sofa.jraft.rpc.RpcRequests.TimeoutNowRequest;
-import com.alipay.sofa.jraft.rpc.RpcRequests.TimeoutNowResponse;
+import com.alipay.sofa.jraft.rpc.RpcRequests.*;
 import com.alipay.sofa.jraft.rpc.RpcResponseClosure;
 import com.alipay.sofa.jraft.rpc.RpcResponseClosureAdapter;
 import com.alipay.sofa.jraft.storage.snapshot.SnapshotReader;
-import com.alipay.sofa.jraft.util.ByteBufferCollector;
-import com.alipay.sofa.jraft.util.OnlyForTest;
-import com.alipay.sofa.jraft.util.Recyclable;
-import com.alipay.sofa.jraft.util.RecyclableByteBufferList;
-import com.alipay.sofa.jraft.util.RecycleUtil;
-import com.alipay.sofa.jraft.util.Requires;
-import com.alipay.sofa.jraft.util.ThreadId;
-import com.alipay.sofa.jraft.util.Utils;
-import com.codahale.metrics.Gauge;
-import com.codahale.metrics.Metric;
-import com.codahale.metrics.MetricFilter;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.MetricSet;
+import com.alipay.sofa.jraft.util.*;
+import com.codahale.metrics.*;
 import com.google.protobuf.Message;
 import com.google.protobuf.ZeroByteStringHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.concurrent.ThreadSafe;
+import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
+import java.util.*;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Replicator for replicating log entry from leader to followers.
@@ -681,6 +660,7 @@ public class Replicator implements ThreadId.OnError {
     private void sendEmptyEntries(final boolean isHeartbeat,
                                   final RpcResponseClosure<AppendEntriesResponse> heartBeatClosure) {
         final AppendEntriesRequest.Builder rb = AppendEntriesRequest.newBuilder();
+        // 填充请求
         if (!fillCommonFields(rb, this.nextIndex - 1, isHeartbeat)) {
             // id is unlock in installSnapshot
             installSnapshot();

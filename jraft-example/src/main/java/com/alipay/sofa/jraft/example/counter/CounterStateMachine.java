@@ -16,14 +16,6 @@
  */
 package com.alipay.sofa.jraft.example.counter;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.alipay.remoting.exception.CodecException;
 import com.alipay.remoting.serialization.SerializerManager;
 import com.alipay.sofa.jraft.Closure;
@@ -36,6 +28,13 @@ import com.alipay.sofa.jraft.example.counter.snapshot.CounterSnapshotFile;
 import com.alipay.sofa.jraft.storage.snapshot.SnapshotReader;
 import com.alipay.sofa.jraft.storage.snapshot.SnapshotWriter;
 import com.alipay.sofa.jraft.util.Utils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.alipay.sofa.jraft.example.counter.CounterOperation.GET;
 import static com.alipay.sofa.jraft.example.counter.CounterOperation.INCREMENT;
@@ -73,6 +72,7 @@ public class CounterStateMachine extends StateMachineAdapter {
 
     @Override
     public void onApply(final Iterator iter) {
+        LOG.info("进入状态机");
         while (iter.hasNext()) {
             long current = 0;
             CounterOperation counterOperation = null;
