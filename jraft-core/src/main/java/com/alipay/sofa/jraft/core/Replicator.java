@@ -300,7 +300,7 @@ public class Replicator implements ThreadId.OnError {
     /**
      * In-flight request.
      * @author dennis
-     *
+     *  这个类表示一批次发送出去的log
      */
     static class Inflight {
         // In-flight request count
